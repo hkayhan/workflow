@@ -1,0 +1,133 @@
+
+.landing-page {
+    font-family: 'Open Sans', sans-serif;
+    background: url('../assets/images/au3.jpg') no-repeat fixed left;
+    background-size: cover;
+    color: #124F86;
+    font-size: 12px;
+    height: 100%;
+    width: 100%;
+    display: block;
+    position: absolute;
+
+
+    /*min-height: 900px;*/
+}
+
+
+
+@media screen and (max-height: 630px) {
+    /* Whatever size you call "Mobile" */
+    #bottom-uni-logo img {
+        display: none;
+    }
+}
+
+@media screen and (max-height: 630px) {
+    /* Whatever size you call "Mobile" */
+    #bottom-uni-links div {
+        display: none;
+    }
+}
+
+.ng-scope {
+    font-family: "Oswald", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 300;
+    line-height: 1.1;
+    color: inherit;
+}
+
+
+/***************************************login form******************************************/
+
+@media only screen and (min-width: 992px) {
+    .login-enter-body {
+        background-color: rgba(254, 254, 254, 0.8);
+        margin-right: 50px;
+        margin-left: auto;
+        width: 400px;
+        padding: 20px;
+
+    }
+}
+@media only screen and (max-width: 992px) {
+    .login-enter-body {
+        background-color: rgba(254, 254, 254, 0.8);
+        margin-left: auto;
+        margin-right: 0;
+        width: 400px;
+        padding: 20px;
+    }
+}
+
+@media only screen and (max-width: 720px) {
+    .login-enter-body {
+        background-color: rgba(254, 254, 254, 0.8);
+        margin-left: auto;
+        margin-right: 0;
+        width: 400px;
+        padding: 20px;
+    }
+}
+@media only screen and (max-width: 540px) {
+    .login-enter-body {
+        background-color: rgba(254, 254, 254, 0.6);
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        padding: 20px;
+    }
+}
+
+
+
+@media only screen and (max-width: 432px) {
+    .login-logo img {
+        /*margin-top: 50px !important;*/
+    }
+}
+
+
+.login-enter-body a:hover {
+    text-decoration: none;
+}
+
+.login-logo img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    /*margin-top: 100px;*/
+    width: 250px;
+
+}
+
+.login-button {
+    display: block;
+    width: 85%;
+    color: #9E141F;
+    background-color: rgba(255, 255, 255, 0.5);
+    background-image: none;
+    border: 1px solid #9E141F;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+
+    padding: 3px;
+    height: 50px;
+
+}
+
+.login-button:hover {
+    background-color: #9E141F;
+    color: whitesmoke;
+}
+
+.login-corporate img{
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    /* margin-top: 100px; */
+    width: 350px;
+    max-width: 99% !important;
+}
