@@ -1,5 +1,8 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {fireBaseApi} from 'api/firebaseapi'
+import Button from 'react-bootstrap/Button';
+import Modal from 'react-bootstrap/Modal';
+import FeatherIcon from "feather-icons-react";
 
 function Workflows(props) {
 
@@ -10,22 +13,42 @@ function Workflows(props) {
     const [workFlowNames, setWorkFlowNames] = useState([])
     const [selectedWorkFlowID, setSelectedWorkFlowID] = useState([])
     const [selectedWorkFlowSteps, setSelectedWorkFlowSteps] = useState([])
+    const [selectedParentsID, setSelectedParentsID] = useState([])
+    const [selectedStepID, setSelectedStepID] = useState([])
+    const [deleteStepID, setDeleteStepID] = useState(null)
 
     useEffect(() => {
         getRelationsFromDB()
-        getWorkFlowsFromDB()
     }, [])
 
     useEffect(() => {
-        console.log("workFlowsDB", workFlowsDB);
-        console.log("relationsDB", relationsDB);
+        async function fetchData() {
+            const wfNames = await filterWorkFlowsStepsWithParents(0)
+            setWorkFlowNames(wfNames)
+        }
 
-        setWorkFlowNames(filterWorkFlowsStepsWithParents(0))
+        fetchData();
+
     }, [workFlowsDB, relationsDB])
 
     useEffect(() => {
-        setSelectedWorkFlowSteps(filterWorkFlowsStepsWithParents(selectedWorkFlowID))
-    }, [selectedWorkFlowID])
+        async function fetchData() {
+            let steps = []
+            const wfSteps = await filterWorkFlowsStepsWithParents(selectedWorkFlowID)
+            for (const wfStep of wfSteps) {
+                // console.log(wfStep.ID);
+                let parents = await filterWorkFlowsStepsWithChild(wfStep.ID)
+                // console.log(parents);
+                steps.push({"parents": parents, ...wfStep})
+                // console.log(steps);
+            }
+            setSelectedWorkFlowSteps(steps)
+        }
+
+        fetchData()
+
+    }, [selectedWorkFlowID, workFlowsDB, relationsDB])
+
     const createNewWorkFlow = () => {
 
         fireBaseApi().post('/workflows.json', {"flowName": newFlowName},
@@ -40,128 +63,234 @@ function Workflows(props) {
     }
 
     const addNewStep = () => {
-        fireBaseApi().post('/workflows.json', {"flowName": newFlowName},
+        let parents = [selectedWorkFlowID, ...selectedParentsID];
+        console.log(selectedParentsID);
 
+        fireBaseApi().post('/workflows.json', {"flowName": newFlowName},
             {
                 headers: {
                     'Content-Type': 'application/json'
                 }
             })
-            .then(res => stepRelationships(res.data.name, [selectedWorkFlowID]))
+            .then(res => stepRelationships(res.data.name, parents))
             .catch(err => console.log(err));
     }
-    const stepRelationships = (id, parents) => {
-        console.log("stepRelationships",parents);
-        parents.forEach(p => {
-            console.log(p);
-            fireBaseApi().post('/stepRelationships.json', {"childID": id, "parentID": p},
 
+    const stepRelationships = async (id, parents) => {
+        for (const parent of parents) {
+            await fireBaseApi().post('/stepRelationships.json', {"childID": id, "parentID": parent},
                 {
                     headers: {
                         'Content-Type': 'application/json'
                     }
                 })
-                .then(res => getRelationsFromDB())
+                .then(res => {
+                    console.log("in res");
+                })
                 .catch(err => console.log(err));
-        })
+        }
+
+        getRelationsFromDB()
     }
 
-    const getWorkFlowsFromDB = () => {
-        fireBaseApi().get("workflows.json")
+    const getRelationsFromDB = async () => {
+        await fireBaseApi().get("stepRelationships.json")
             .then(res => {
-
-                setWorkFlowsDB(res.data)
-            })
-            .catch(err => console.log(err))
-    }
-
-    const getRelationsFromDB = () => {
-        fireBaseApi().get("stepRelationships.json?parentId=0")
-            .then(res => {
-                // console.log(res.data)
                 setRelationsDB(res.data)
+                console.log("relationsDB");
+                console.table(res.data);
             })
             .catch(err => console.log(err))
+        await getWorkFlowsFromDB()
     }
 
-    const filterWorkFlowsStepsWithParents = (parentID) => {
+    const getWorkFlowsFromDB = async () => {
+        await fireBaseApi().get("workflows.json")
+            .then(res => {
+                setWorkFlowsDB(res.data)
+                console.log("getWorkFlowsFromDB");
+                console.table(res.data);
+            })
+            .catch(err => console.log(err))
+        // console.log("before filter");
+        // let wfNames = await filterWorkFlowsStepsWithParents(0)
+        // console.log("after filter");
+        // setWorkFlowNames(wfNames)
+        // console.log("after state");
+    }
+
+    const filterWorkFlowsStepsWithParents = async (parentID) => {
         let workFlowNamesArr = []
         for (const key in relationsDB) {
-            console.log(relationsDB[key]);
             if (relationsDB[key].parentID === parentID) {
 
                 let wf = workFlowsDB[relationsDB[key].childID]
-
-                console.log(wf);
-
                 workFlowNamesArr.push({"ID": relationsDB[key].childID, ...wf})
-                // console.log(relationsDB[key]);
+                console.log("workFlowNamesArr");
+                console.log(workFlowNamesArr);
             }
         }
-        // console.log(workFlowNamesArr);
         return workFlowNamesArr
     }
+
+    const filterWorkFlowsStepsWithChild = async (childID) => {
+        console.log(childID);
+        let workFlowNamesArr = []
+        for (const key in relationsDB) {
+            if (relationsDB[key].childID === childID) {
+
+                let wf = workFlowsDB[relationsDB[key].parentID]
+                workFlowNamesArr.push({"ID": relationsDB[key].parentID, ...wf})
+                console.log("workFlowNamesArr");
+                console.log(workFlowNamesArr);
+            }
+        }
+        return workFlowNamesArr
+    }
+
+    const selectedParents = () => {
+        let result = []
+        let checkBoxes = document.getElementById('subtasks').querySelectorAll('input[type="checkbox"]'); // get all the checkbox
+
+        checkBoxes.forEach(cb => {
+            if (cb.checked) {
+                result.push(cb.value)
+            }
+        })
+
+        console.log(result);
+
+        setSelectedParentsID(result)
+    }
+
+    const deleteAllSteps = (stepID) => {
+
+    }
+    const [modalShow, setModalShow] = useState(false);
+
+    const handleClose = () => {
+        setModalShow(false)
+    };
+    const handleShow = () => deleteAllSteps(deleteStepID)
+
 
 
     return (
         <div>
 
+            <Modal show={modalShow}
+                   size="lg"
+                   aria-labelledby="contained-modal-title-vcenter"
+                   centered
+                   onHide={handleClose}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Modal heading</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>Woohoo, you're reading this text in a modal!</Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleClose}>
+                        Close
+                    </Button>
+                    <Button variant="primary" onClick={handleShow}>
+                        Save Changes
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
             <div>Akış şablonları</div>
             <div className={"d-flex flex-row-reverse pe-5"}>
-                <button onClick={() => setNewFlowVisible(true)} className={"btn btn-success"}>Yeni Akış Oluştur
+                <button onClick={() => {
+                    setNewFlowVisible(true)
+                }} className={"btn btn-success"}>Yeni Akış Oluştur
                 </button>
 
             </div>
-            {newFlowVisible &&
-                <div className={"d-flex mt-3 mb-3 pe-5"}>
-                    <div className="input-group me-2 ">
-                        <input onChange={e => setNewFlowName(e.target.value)} placeholder={"Akış Adı"} type="text"
-                               className="form-control"
-                               aria-label="Sizing example input"
-                               aria-describedby="inputGroup-sizing-default"/>
-                    </div>
-                    <button onClick={() => createNewWorkFlow()} className={"btn btn-success"}>Ekle</button>
-
+            {newFlowVisible && <div className={"d-flex mt-3 mb-3 pe-5"}>
+                <div className="input-group me-2 ">
+                    <input onChange={e => setNewFlowName(e.target.value)} placeholder={"Akış Adı"} type="text"
+                           className="form-control"
+                           aria-label="Sizing example input"
+                           aria-describedby="inputGroup-sizing-default"/>
                 </div>
-            }
+                <button onClick={() => {
+                    createNewWorkFlow()
+                    setNewFlowVisible(false)
+                }} className={"btn btn-success"}>Ekle
+                </button>
+
+            </div>}
 
 
             <h4 className="mt-4">Kayıtlı Akışlar</h4>
             <hr/>
-            {workFlowNames.map((w, i) =>
-                <div key={i} onClick={() => setSelectedWorkFlowID(w.ID)}>
-                    <div
-                        className={"border p-2 mb-2 rounded pointer bg-white ps-3 fw-bold text-uppercase"}> {w.flowName}</div>
-                    {
-                        selectedWorkFlowID === w.ID && <>
-                            {selectedWorkFlowSteps.map((s, i) =>
-                                <div className={"border d-flex mb-2 mx-5 p-2 ps-3 rounded bg-white"}>
+            {workFlowNames.map((w, i) => <div key={i} onClick={() => setSelectedWorkFlowID(w.ID)}>
+                <div
+                    className={"border p-2 mb-2 rounded pointer bg-white ps-3 fw-bold text-uppercase"}> {w.flowName}</div>
+                {selectedWorkFlowID === w.ID && <div id={"subtasks"}>
+                    {selectedWorkFlowSteps.map((s, i) =>
+                        <div key={i} className={"border rounded bg-white mb-2 mx-5 p-2 ps-1 pointer transition"}
+                        >
+                            <div key={i}
+                                 className={"d-flex   "}>
+                                <div className={"checkbox-label"}>
+
+                                    <input className={""} type="checkbox" onChange={() => selectedParents()}
+                                           value={s.ID}/>
+
+                                </div>
+                                <div onClick={() => setSelectedStepID(s.ID === selectedStepID ? "" : s.ID)}
+                                     className={"ms-2 h-100 w-100"}>
                                     {s.flowName}
                                 </div>
-                            )}
-                            <div className={"d-flex mt-3 mb-5 px-5"}>
-
-                                <div className="input-group me-2 ">
-                                    <input onChange={e => setNewFlowName(e.target.value)} type="text"
-                                           className="form-control"
-                                           aria-label="Sizing example input"
-                                           aria-describedby="inputGroup-sizing-default"
-                                           placeholder={"Yeni Adım"}
-                                    />
+                                <div className={"pointer"} onClick={() => {
+                                    setModalShow(true)
+                                    setDeleteStepID(s.ID)
+                                    // deleteStepsConfirm(s.ID)
+                                    // setDeleteStepID(s.ID)
+                                    // setDeleteFlowVisible(true)
+                                }}>
+                                    <FeatherIcon icon={"trash-2"} size={20}/>
                                 </div>
-                                <button onClick={() => addNewStep()} className={"btn btn-success"}>Ekle</button>
-
                             </div>
-                            <hr/>
-                        </>
+                            {selectedStepID === s.ID &&
+                                <div onClick={() => setSelectedStepID(s.ID === selectedStepID ? "" : s.ID)}
+                                >
+                                    <div className={"fst-italic fw-light text-muted p-2 ps-4"}>Öncül İşlemler</div>
+                                    <ul>
+                                        {s.parents.map((sp, i) =>
+                                            <li className={"fst-italic fw-light text-muted"} key={i}>
+                                                {sp.flowName}
+                                            </li>)}
+                                    </ul>
+                                </div>
 
-                    }
-                    <div>
+
+                            }
+
+                        </div>
+                    )}
+                    <div className={"d-flex mt-3 mb-5 px-5"}>
+
+                        <div className="input-group me-2 ">
+                            <input onChange={e => setNewFlowName(e.target.value)} type="text"
+                                   className="form-control"
+                                   aria-label="Sizing example input"
+                                   aria-describedby="inputGroup-sizing-default"
+                                   placeholder={"Yeni Adım"}
+                            />
+                        </div>
+                        <button onClick={() => addNewStep()} className={"btn btn-success"}>Ekle</button>
 
                     </div>
+                    <hr/>
+                </div>
+
+                }
+                <div>
 
                 </div>
-            )}
+
+            </div>)}
 
 
         </div>);

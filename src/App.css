@@ -2,3 +2,17 @@ body{
   margin: 0;
   padding: 0;
 }
+
+.checkbox-label{
+  font-family: system-ui, sans-serif;
+  font-size: 1.3rem;
+  font-weight: bold;
+  line-height: 1.1;
+  display: grid;
+  grid-template-columns: 1em auto;
+  /*gap: 0.5em;*/
+}
+
+.transition{
+  transition: 1s ease;
+}
